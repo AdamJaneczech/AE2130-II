@@ -9,15 +9,40 @@ mu = 18.23e-6 #Pa*s at T = 22.2 C
 c = 0.16
 
 # Constant probe locations (chord positions, % chord length)
-probe_positions = np.array([
+probe_positions_u = np.array([
     0, 0.35626, 1.33331, 3.66108, 7.2922, 11.35604, 15.59135, 19.91328, 
     24.28443, 28.68627, 33.10518, 37.53128, 41.95991, 46.38793, 50.8156, 
     55.2486, 59.69223, 64.13685, 68.579, 73.02401, 77.47357, 81.93114, 
-    86.38589, 90.8108, 100, 0, 0.43123, 1.47147, 3.92479, 7.79506, 
+    86.38589, 90.8108, 100
+])
+
+probe_positions_l = np.array([
+    0, 0.43123, 1.47147, 3.92479, 7.79506, 
     12.0143, 16.32276, 20.67013, 25.03792, 29.41554, 33.79772, 38.18675, 
     42.57527, 46.96278, 51.35062, 55.73662, 60.12075, 64.50502, 68.8901, 
     73.28011, 77.67783, 82.07965, 86.47978, 100
 ])
+
+x_boundaries_u = [0.0]
+x_integration_len_u = []
+x_boundaries_l = [0.0]
+x_integration_len_l = []
+
+for i in range(len(probe_positions_u)):
+    if(i == len(probe_positions_u) - 1):
+        x_boundaries_u.append(100.0)
+    else:
+        x_boundaries_u.append((probe_positions_u[i] + probe_positions_u[i+1])/2)
+    x_integration_len_u.append(x_boundaries_u[i+1] - x_boundaries_u[i])
+    
+for i in range(len(probe_positions_l)):
+    if(i == len(probe_positions_l) - 1):
+        x_boundaries_l.append(100.0)
+    else:
+        x_boundaries_l.append((probe_positions_l[i] + probe_positions_l[i+1])/2)
+    x_integration_len_l.append(x_boundaries_l[i+1] - x_boundaries_l[i])
+
+print(x_boundaries_l)
 
 # Read the file and extract headers and data
 with open(file_path, 'r') as f:
@@ -75,7 +100,7 @@ def getCn(AOA):
     
     # Convert AOA column to numeric values
     aoa_column = np.array(columns['Alpha'], dtype=float)
-    
+    rho = 0
     # Find the row corresponding to the specified AOA
     for row_index in range(31):  # Only search within rows 0 to 31
         if np.isclose(aoa_column[row_index], AOA, atol=1e-6):  # Compare with tolerance for floats
@@ -85,9 +110,21 @@ def getCn(AOA):
             ])  # Adjust range based on probe columns
             print(f"Probe data for AOA = {AOA}:\n{probe_data}")
             rho = float(columns[f'rho'][row_index])
-            V_inf = mu * Re / (rho * c)
-            
-
+    
+    V_inf = mu * Re / (rho * c)
+    C_pl = 0
+    C_pu = 0
+    print(len(x_integration_len_l))
+    for i in range(0,25):
+        C_pu += probe_data[i] * x_integration_len_u[i]
+        print(i)
+    for i in range(0,24):
+        C_pl += probe_data[i+25] * x_integration_len_l[i]
+        print(i)
+    print(C_pu)
+    print(C_pl)        
+    C_pl = C_pl * (1/(0.5 * rho * V_inf**2))
+    C_pu = C_pu * (1/(0.5 * rho * V_inf**2))
     #calculate the normal force coefficient
 
 # Example usage:

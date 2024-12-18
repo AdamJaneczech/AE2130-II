@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 # File path
 file_path = 'raw_2D_code.txt'
 
+Re = 1.8e5
+mu = 18.23e-6 #Pa*s at T = 22.2 C
+c = 0.16
+
 # Constant probe locations (chord positions, % chord length)
 probe_positions = np.array([
     0, 0.35626, 1.33331, 3.66108, 7.2922, 11.35604, 15.59135, 19.91328, 
@@ -56,12 +60,44 @@ if column_name in columns:
     print(f"Value at column '{column_name}', row {row_index}: {value}")
 else:
     print(f"Column '{column_name}' not found!")
+
+#get the normal force coefficient without
+def getCn(AOA):
+    """
+    Extracts the row corresponding to the specified AOA and organizes probe data into an array.
     
+    :param AOA: Angle of Attack in degrees (numeric)
+    """
+    # Ensure the AOA column exists
+    if 'Alpha' not in columns:
+        print("Column 'AOA' not found in the data.")
+        return None
+    
+    # Convert AOA column to numeric values
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    
+    # Find the row corresponding to the specified AOA
+    for row_index in range(31):  # Only search within rows 0 to 31
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):  # Compare with tolerance for floats
+            # Extract probe data for the given AOA
+            probe_data = np.array([
+                float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(1, 50)
+            ])  # Adjust range based on probe columns
+            print(f"Probe data for AOA = {AOA}:\n{probe_data}")
+            rho = float(columns[f'rho'][row_index])
+            V_inf = mu * Re / (rho * c)
+            
+
+    #calculate the normal force coefficient
+
+# Example usage:
+probe_data = getCn(5.0)  # Replace with the desired AOA
+"""
 def plot_pressure_distribution(AOA):
-    """
-    Plots the pressure distribution (upper and lower surfaces) for a given AOA.
-    :param AOA: Angle of Attack in degrees
-    """
+
+    #Plots the pressure distribution (upper and lower surfaces) for a given AOA.
+    #:param AOA: Angle of Attack in degrees
+    
     if AOA not in pressure_data:
         print(f"No data available for AOA = {AOA}")
         return
@@ -91,3 +127,4 @@ def plot_pressure_distribution(AOA):
 
 # Example usage: Plot for AOA = 5°
 plot_pressure_distribution(5)
+"""

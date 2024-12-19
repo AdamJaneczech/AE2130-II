@@ -99,21 +99,20 @@ def getCn(AOA):
             probe_data_l = probe_data[25:]
     
     V_inf = mu * Re / (rho * c)
-    C_pl = 0
-    C_pu = 0
-    
-    plt.figure()
-    plt.plot(probe_positions_u, probe_data_u, label='Probe data upper part at different x locations')
-    plt.plot(probe_positions_l, probe_data_l, label='Probe data lower part at different x locations')
-    plt.legend()
-    plt.show()
             
     C_pl = probe_data_l * (1/(0.5 * rho * V_inf**2))
     C_pu = probe_data_u * (1/(0.5 * rho * V_inf**2))
+
+    plt.figure()
+    plt.plot(probe_positions_u, C_pu, label='C_p upper part', marker='o')
+    plt.plot(probe_positions_l, C_pl, label='C_p lower part', marker='o')
+    plt.gca().invert_yaxis()
+    plt.legend()
+    plt.show()
     
     print(C_pu)
     print(C_pl)
     #calculate the normal force coefficient
 
 # Example usage:
-probe_data = getCn(10)  # Replace with the desired AOA
+probe_data = getCn(5.0)  # Replace with the desired AOA

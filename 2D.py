@@ -1,6 +1,7 @@
 #https://chatgpt.com/share/675eea89-a650-8001-b6b7-bb59d3d7e2f0
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 # File path
 file_path = 'raw_2D_code.txt'
 
@@ -75,13 +76,8 @@ columns = {header: data_array[:, idx] for idx, header in enumerate(headers)}
 # Access confirmation
 #print("Columns available:", list(columns.keys()))
 
-#get the normal force coefficient without
+#get the normal force coefficient
 def getCn(AOA):
-    """
-    Extracts the row corresponding to the specified AOA and organizes probe data into an array.
-    
-    :param AOA: Angle of Attack in degrees (numeric)
-    """
     # Ensure the AOA column exists
     if 'Alpha' not in columns:
         print("Column 'Alpha' not found in the data.")
@@ -99,58 +95,25 @@ def getCn(AOA):
             ])  # Adjust range based on probe columns
             print(f"Probe data for AOA = {AOA}:\n{probe_data}")
             rho = float(columns[f'rho'][row_index])
+            probe_data_u = probe_data[:25]
+            probe_data_l = probe_data[25:]
     
     V_inf = mu * Re / (rho * c)
     C_pl = 0
     C_pu = 0
-    print(len(x_integration_len_l))
-    for i in range(0,25):
-        C_pu += probe_data[i] * x_integration_len_u[i]
-        
-    for i in range(0,24):
-        C_pl += probe_data[i+25] * x_integration_len_l[i]
+    
+    plt.figure()
+    plt.plot(probe_positions_u, probe_data_u, label='Probe data upper part at different x locations')
+    plt.plot(probe_positions_l, probe_data_l, label='Probe data lower part at different x locations')
+    plt.legend()
+    plt.show()
             
-    C_pl = C_pl * (1/(0.5 * rho * V_inf**2))
-    C_pu = C_pu * (1/(0.5 * rho * V_inf**2))
+    C_pl = probe_data_l * (1/(0.5 * rho * V_inf**2))
+    C_pu = probe_data_u * (1/(0.5 * rho * V_inf**2))
+    
     print(C_pu)
     print(C_pl)
     #calculate the normal force coefficient
 
 # Example usage:
-probe_data = getCn(0.0)  # Replace with the desired AOA
-"""
-def plot_pressure_distribution(AOA):
-
-    #Plots the pressure distribution (upper and lower surfaces) for a given AOA.
-    #:param AOA: Angle of Attack in degrees
-    
-    if AOA not in pressure_data:
-        print(f"No data available for AOA = {AOA}")
-        return
-
-    # Extract data for given AOA
-    pressures = np.array(pressure_data[AOA])
-
-    # Split into upper and lower surfaces
-    upper_surface_x = probe_positions[:25]
-    upper_surface_y = pressures[:25]
-
-    lower_surface_x = probe_positions[25:]
-    lower_surface_y = pressures[25:]
-
-    # Plot the pressure distribution
-    plt.figure(figsize=(10, 6))
-    plt.plot(upper_surface_x, upper_surface_y, 'o-', label="Upper Surface")
-    plt.plot(lower_surface_x, lower_surface_y, 'o-', label="Lower Surface")
-    plt.gca().invert_yaxis()  # Pressure decreases downward
-
-    plt.title(f"Pressure Distribution at AOA = {AOA}°")
-    plt.xlabel("Chord Position (%)")
-    plt.ylabel("Static Pressure Difference")
-    plt.legend()
-    plt.grid()
-    plt.show()
-
-# Example usage: Plot for AOA = 5°
-plot_pressure_distribution(5)
-"""
+probe_data = getCn(10)  # Replace with the desired AOA

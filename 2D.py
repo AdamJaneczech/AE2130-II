@@ -22,18 +22,19 @@ probe_positions_l = np.array([
     42.57527, 46.96278, 51.35062, 55.73662, 60.12075, 64.50502, 68.8901, 
     73.28011, 77.67783, 82.07965, 86.47978, 100
 ])
-
+#boundary value array for upper and lower part of the airfoil
 x_boundaries_u = [0.0]
-x_integration_len_u = []
 x_boundaries_l = [0.0]
+
+x_integration_len_u = []
 x_integration_len_l = []
 
 for i in range(len(probe_positions_u)):
     if(i == len(probe_positions_u) - 1):
         x_boundaries_u.append(100.0)
     else:
-        x_boundaries_u.append((probe_positions_u[i] + probe_positions_u[i+1])/2)
-    x_integration_len_u.append(x_boundaries_u[i+1] - x_boundaries_u[i])
+        x_boundaries_u.append((probe_positions_u[i] + probe_positions_u[i+1])/2) #boundary x coordinates for using each probe (for discrete sum integration)
+    x_integration_len_u.append(x_boundaries_u[i+1] - x_boundaries_u[i]) #lengths over which the integration happens
     
 for i in range(len(probe_positions_l)):
     if(i == len(probe_positions_l) - 1):
@@ -72,19 +73,7 @@ data_array = np.array(data, dtype=object)
 columns = {header: data_array[:, idx] for idx, header in enumerate(headers)}
 
 # Access confirmation
-print("Columns available:", list(columns.keys()))
-
-# Example: Accessing specific column and specific value
-column_name = 'P001'  # Replace with desired column name
-row_index = 2  # Replace with desired row index (0-based)
-
-if column_name in columns:
-    column = columns[column_name]
-    value = column[row_index]
-    print(column)
-    print(f"Value at column '{column_name}', row {row_index}: {value}")
-else:
-    print(f"Column '{column_name}' not found!")
+#print("Columns available:", list(columns.keys()))
 
 #get the normal force coefficient without
 def getCn(AOA):
@@ -95,7 +84,7 @@ def getCn(AOA):
     """
     # Ensure the AOA column exists
     if 'Alpha' not in columns:
-        print("Column 'AOA' not found in the data.")
+        print("Column 'Alpha' not found in the data.")
         return None
     
     # Convert AOA column to numeric values
@@ -117,18 +106,18 @@ def getCn(AOA):
     print(len(x_integration_len_l))
     for i in range(0,25):
         C_pu += probe_data[i] * x_integration_len_u[i]
-        print(i)
+        
     for i in range(0,24):
         C_pl += probe_data[i+25] * x_integration_len_l[i]
-        print(i)
-    print(C_pu)
-    print(C_pl)        
+            
     C_pl = C_pl * (1/(0.5 * rho * V_inf**2))
     C_pu = C_pu * (1/(0.5 * rho * V_inf**2))
+    print(C_pu)
+    print(C_pl)
     #calculate the normal force coefficient
 
 # Example usage:
-probe_data = getCn(5.0)  # Replace with the desired AOA
+probe_data = getCn(0.0)  # Replace with the desired AOA
 """
 def plot_pressure_distribution(AOA):
 

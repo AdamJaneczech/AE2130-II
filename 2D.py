@@ -106,33 +106,31 @@ def getCp(AOA):
 
     return C_pu, C_pl
 
-# Example usage:
-C_pu_1, C_pl_1 = getCp(0.0)
-C_pu_2, C_pl_2 = getCp(3.0)
-C_pu_3, C_pl_3 = getCp(6.0)
+import math
 
-plt.figure()
-plt.title('C_p plot')
-plt.subplot(1,3,1)
-plt.plot(probe_positions_u, C_pu_1, label='C_p upper part', marker='o', color='#187795')
-plt.plot(probe_positions_l, C_pl_1, label='C_p lower part', marker='o', color = '#F76F8E')
-plt.xlabel('x/c')
-plt.ylabel('C_p with AOA = 0 deg')
-plt.gca().invert_yaxis()
+# Define the AOAs to process
+aoas = [-6.0, -3.0, 0.0, 3.0, 6.0, 9.0]  # Example with more AOAs
 
-plt.subplot(1,3,2)
-plt.plot(probe_positions_u, C_pu_2, label='C_p upper part', marker='o', color='#187795')
-plt.plot(probe_positions_l, C_pl_2, label='C_p lower part', marker='o', color = '#F76F8E')
-plt.xlabel('x/c')
-plt.ylabel('C_p with AOA = 3 deg')
-plt.gca().invert_yaxis()
+# Initialize arrays to store results
+results = [getCp(aoa) for aoa in aoas]
 
-plt.subplot(1,3,3)
-plt.plot(probe_positions_u, C_pu_3, label='C_p upper part', marker='o', color='#187795')
-plt.plot(probe_positions_l, C_pl_3, label='C_p lower part', marker='o', color = '#F76F8E')
-plt.xlabel('x/c')
-plt.ylabel('C_p with AOA = 6 deg')
-plt.gca().invert_yaxis()
+# Calculate the grid size for subplots (3 columns per row)
+columns = 3
+rows = math.ceil(len(aoas) / columns)  # Number of rows needed
 
-plt.legend()
+# Create subplots dynamically
+plt.figure(figsize=(columns * 5, rows * 4))  # Adjust figure size based on rows and columns
+plt.suptitle('C_p Plot')
+
+for i, (aoa, (C_pu, C_pl)) in enumerate(zip(aoas, results), start=1):
+    plt.subplot(rows, columns, i)  # Create subplot with dynamic rows and columns
+    plt.plot(probe_positions_u, C_pu, label='C_p upper part', marker='o', color='#187795')
+    plt.plot(probe_positions_l, C_pl, label='C_p lower part', marker='o', color='#F76F8E')
+    plt.xlabel('x/c')
+    plt.ylabel(f'C_p with AOA = {aoa} deg')
+    plt.gca().invert_yaxis()
+    if i == 1:  # Add legend to the first subplot only
+        plt.legend()
+
+plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to avoid overlap with title
 plt.show()

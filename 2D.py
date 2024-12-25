@@ -77,7 +77,7 @@ columns = {header: data_array[:, idx] for idx, header in enumerate(headers)}
 #print("Columns available:", list(columns.keys()))
 
 #get the normal force coefficient
-def getCn(AOA):
+def getCp(AOA):
     # Ensure the AOA column exists
     if 'Alpha' not in columns:
         print("Column 'Alpha' not found in the data.")
@@ -103,16 +103,36 @@ def getCn(AOA):
     C_pl = probe_data_l * (1/(0.5 * rho * V_inf**2))
     C_pu = probe_data_u * (1/(0.5 * rho * V_inf**2))
 
-    plt.figure()
-    plt.plot(probe_positions_u, C_pu, label='C_p upper part', marker='o')
-    plt.plot(probe_positions_l, C_pl, label='C_p lower part', marker='o')
-    plt.gca().invert_yaxis()
-    plt.legend()
-    plt.show()
-    
-    print(C_pu)
-    print(C_pl)
-    #calculate the normal force coefficient
+
+    return C_pu, C_pl
 
 # Example usage:
-probe_data = getCn(5.0)  # Replace with the desired AOA
+C_pu_1, C_pl_1 = getCp(0.0)
+C_pu_2, C_pl_2 = getCp(3.0)
+C_pu_3, C_pl_3 = getCp(6.0)
+
+plt.figure()
+plt.title('C_p plot')
+plt.subplot(1,3,1)
+plt.plot(probe_positions_u, C_pu_1, label='C_p upper part', marker='o', color='#187795')
+plt.plot(probe_positions_l, C_pl_1, label='C_p lower part', marker='o', color = '#F76F8E')
+plt.xlabel('x/c')
+plt.ylabel('C_p with AOA = 0 deg')
+plt.gca().invert_yaxis()
+
+plt.subplot(1,3,2)
+plt.plot(probe_positions_u, C_pu_2, label='C_p upper part', marker='o', color='#187795')
+plt.plot(probe_positions_l, C_pl_2, label='C_p lower part', marker='o', color = '#F76F8E')
+plt.xlabel('x/c')
+plt.ylabel('C_p with AOA = 3 deg')
+plt.gca().invert_yaxis()
+
+plt.subplot(1,3,3)
+plt.plot(probe_positions_u, C_pu_3, label='C_p upper part', marker='o', color='#187795')
+plt.plot(probe_positions_l, C_pl_3, label='C_p lower part', marker='o', color = '#F76F8E')
+plt.xlabel('x/c')
+plt.ylabel('C_p with AOA = 6 deg')
+plt.gca().invert_yaxis()
+
+plt.legend()
+plt.show()

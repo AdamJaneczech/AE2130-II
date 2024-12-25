@@ -92,12 +92,12 @@ def getCp(AOA):
 def getForceCoeffs(AOA, C_pl, C_pu):
     integral_upper = np.trapz(C_pu, probe_positions_u)
     integral_lower = np.trapz(C_pl, probe_positions_l)
-    C_n = (integral_lower + integral_upper)
-    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}')
+    C_n = (integral_lower - integral_upper)
+    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}, AOA: {AOA}')
     integral_upper = np.trapz(C_pu * probe_positions_u, probe_positions_u)
     integral_lower = np.trapz(C_pl * probe_positions_l, probe_positions_l)
-    C_m = integral_lower + integral_upper
-    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_m: {C_m}')
+    C_m = integral_lower - integral_upper
+    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_m: {C_m}, AOA: {AOA}')
     
 
     # get the cl and cd using aoa & trig
@@ -114,7 +114,6 @@ rows = math.ceil(len(aoas) / columns)  # Number of rows needed
 
 # Create subplots dynamically
 plt.figure(figsize=(columns * 5, rows * 4))  # Adjust figure size based on rows and columns
-plt.suptitle('C_p Plot')
 
 for i, (aoa, (C_pu, C_pl)) in enumerate(zip(aoas, results), start=1):
     plt.subplot(rows, columns, i)  # Create subplot with dynamic rows and columns

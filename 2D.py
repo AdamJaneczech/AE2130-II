@@ -1,5 +1,7 @@
 #https://chatgpt.com/share/675eea89-a650-8001-b6b7-bb59d3d7e2f0
+#https://chatgpt.com/share/676be685-ff4c-8001-958e-3e83bf74113e
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 from matplotlib import pyplot as plt
 # File path
@@ -23,28 +25,9 @@ probe_positions_l = np.array([
     42.57527, 46.96278, 51.35062, 55.73662, 60.12075, 64.50502, 68.8901, 
     73.28011, 77.67783, 82.07965, 86.47978, 100
 ])
-#boundary value array for upper and lower part of the airfoil
-x_boundaries_u = [0.0]
-x_boundaries_l = [0.0]
 
-x_integration_len_u = []
-x_integration_len_l = []
-
-for i in range(len(probe_positions_u)):
-    if(i == len(probe_positions_u) - 1):
-        x_boundaries_u.append(100.0)
-    else:
-        x_boundaries_u.append((probe_positions_u[i] + probe_positions_u[i+1])/2) #boundary x coordinates for using each probe (for discrete sum integration)
-    x_integration_len_u.append(x_boundaries_u[i+1] - x_boundaries_u[i]) #lengths over which the integration happens
-    
-for i in range(len(probe_positions_l)):
-    if(i == len(probe_positions_l) - 1):
-        x_boundaries_l.append(100.0)
-    else:
-        x_boundaries_l.append((probe_positions_l[i] + probe_positions_l[i+1])/2)
-    x_integration_len_l.append(x_boundaries_l[i+1] - x_boundaries_l[i])
-
-print(x_boundaries_l)
+probe_positions_u /= 100
+probe_positions_l /= 100
 
 # Read the file and extract headers and data
 with open(file_path, 'r') as f:
@@ -93,7 +76,7 @@ def getCp(AOA):
             probe_data = np.array([
                 float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(1, 50)
             ])  # Adjust range based on probe columns
-            print(f"Probe data for AOA = {AOA}:\n{probe_data}")
+            #print(f"Probe data for AOA = {AOA}:\n{probe_data}")
             rho = float(columns[f'rho'][row_index])
             probe_data_u = probe_data[:25]
             probe_data_l = probe_data[25:]
@@ -106,10 +89,21 @@ def getCp(AOA):
 
     return C_pu, C_pl
 
-import math
+def getForceCoeffs(AOA, C_pl, C_pu):
+    integral_upper = np.trapz(C_pu, probe_positions_u)
+    integral_lower = np.trapz(C_pl, probe_positions_l)
+    C_n = (integral_lower + integral_upper)
+    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}')
+    integral_upper = np.trapz(C_pu * probe_positions_u, probe_positions_u)
+    integral_lower = np.trapz(C_pl * probe_positions_l, probe_positions_l)
+    C_m = integral_lower + integral_upper
+    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_m: {C_m}')
+    
+
+    # get the cl and cd using aoa & trig
 
 # Define the AOAs to process
-aoas = [-6.0, -3.0, 0.0, 3.0, 6.0, 9.0]  # Example with more AOAs
+aoas = [-6.0, -3.0, 0.0, 3.0, 6.0, 14.0]  # Example with more AOAs
 
 # Initialize arrays to store results
 results = [getCp(aoa) for aoa in aoas]
@@ -131,6 +125,7 @@ for i, (aoa, (C_pu, C_pl)) in enumerate(zip(aoas, results), start=1):
     plt.gca().invert_yaxis()
     if i == 1:  # Add legend to the first subplot only
         plt.legend()
+    getForceCoeffs(aoa, C_pl, C_pu)
 
 plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to avoid overlap with title
 plt.show()

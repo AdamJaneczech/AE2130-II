@@ -63,9 +63,8 @@ data_array = np.array(data, dtype=object)
 
 # Create a dictionary of NumPy arrays for each column
 columns = {header: data_array[:, idx] for idx, header in enumerate(headers)}
-
 # Access confirmation
-#print("Columns available:", list(columns.keys()))
+print("Columns available:", list(columns.keys()))
 
 #get the normal force coefficient
 def getCp(AOA):
@@ -110,8 +109,30 @@ def getForceCoeffs(AOA, C_pl, C_pu):
 
     # get the cl and cd using aoa & trig
 
-def getWakeProfile(AOA):
-    print()
+def getVelocityProfile(AOA):
+    # Ensure the AOA column exists
+    if 'Alpha' not in columns:
+        print("Column 'Alpha' not found in the data.")
+        return None
+    
+    # Convert AOA column to numeric values
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    # Find the row corresponding to the specified AOA
+    for row_index in range(31):  # Only search within rows 0 to 31
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):  # Compare with tolerance for floats
+            # Extract probe data for the given AOA
+            total_pressures = np.array([
+                float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(50, 97)
+            ])  # Adjust range based on probe columns
+            static_pressures = np.array([
+                float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(98, 110)
+            ])  # Adjust range based on probe columns
+
+    #plt.plot(probe_positions_total, total_pressures, label='Total pressures', marker='o', color='#187795')
+    plt.plot(probe_positions_static, static_pressures, label='Static pressures', marker='o', color='#F76F8E')
+    plt.show()
+
+getVelocityProfile(1.0)
 
 # Define the AOAs to process
 aoas = [-3.0, -1.0, 0.0, 1.0, 3.0, 5.0, 10.0, 11.0, 12.0]  # Example with more AOAs

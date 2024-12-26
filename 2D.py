@@ -26,6 +26,14 @@ probe_positions_l = np.array([
     73.28011, 77.67783, 82.07965, 86.47978, 100
 ])
 
+probe_positions_total = np.array([
+    0, 12, 21, 27, 33, 39, 45, 51, 57, 63, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105, 108, 111, 114, 117, 120, 123, 126, 129, 132, 135, 138, 141, 144, 147, 150, 156, 162, 168, 174, 180, 186, 195, 207,  219
+])
+
+probe_positions_static = np.array([
+    43.5, 55.5, 67.5, 79.5, 91.5, 103.5, 115.5, 127.5, 139.5, 151.5, 163.5, 175.5
+])
+
 probe_positions_u /= 100
 probe_positions_l /= 100
 
@@ -102,8 +110,11 @@ def getForceCoeffs(AOA, C_pl, C_pu):
 
     # get the cl and cd using aoa & trig
 
+def getWakeProfile(AOA):
+    print()
+
 # Define the AOAs to process
-aoas = [-6.0, -3.0, 0.0, 3.0, 6.0, 14.0]  # Example with more AOAs
+aoas = [-3.0, -1.0, 0.0, 1.0, 3.0, 5.0, 10.0, 11.0, 12.0]  # Example with more AOAs
 
 # Initialize arrays to store results
 results = [getCp(aoa) for aoa in aoas]

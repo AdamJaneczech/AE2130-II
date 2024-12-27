@@ -1,5 +1,4 @@
-#https://chatgpt.com/share/675eea89-a650-8001-b6b7-bb59d3d7e2f0
-#https://chatgpt.com/share/676be685-ff4c-8001-958e-3e83bf74113e
+#https://chatgpt.com/share/676e7c21-9ca8-8001-afc3-92def3482e39
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -109,13 +108,20 @@ def getForceCoeffs(AOA, C_pl, C_pu):
 
     # get the cl and cd using aoa & trig
 
+from scipy.interpolate import interp1d
+
 def getVelocityProfile(AOA):
-    # Ensure the AOA column exists
+    """
+    Computes the velocity profile at a given angle of attack (AOA), interpolating
+    static pressures to match total pressure probe locations.
+
+    Parameters:
+        AOA (float): Angle of attack in degrees.
+    """
     if 'Alpha' not in columns:
         print("Column 'Alpha' not found in the data.")
         return None
-    
-    # Convert AOA column to numeric values
+
     aoa_column = np.array(columns['Alpha'], dtype=float)
     # Find the row corresponding to the specified AOA
     for row_index in range(31):  # Only search within rows 0 to 31
@@ -123,14 +129,44 @@ def getVelocityProfile(AOA):
             # Extract probe data for the given AOA
             total_pressures = np.array([
                 float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(50, 97)
-            ])  # Adjust range based on probe columns
+            ])  # Adjust range based on total pressure probe columns
             static_pressures = np.array([
                 float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(98, 110)
-            ])  # Adjust range based on probe columns
+            ])  # Adjust range based on static pressure probe columns
+            rho = float(columns['rho'][row_index])  # Air density
+            break
+    else:
+        print(f"No data found for AOA = {AOA} degrees.")
+        return None
 
-    #plt.plot(probe_positions_total, total_pressures, label='Total pressures', marker='o', color='#187795')
-    plt.plot(probe_positions_static, static_pressures, label='Static pressures', marker='o', color='#F76F8E')
+    # Interpolate static pressures to match total pressure probe positions
+    static_pressure_interp = interp1d(
+        probe_positions_static,
+        static_pressures,
+        kind='linear',
+        bounds_error=False,
+        fill_value="extrapolate"
+    )
+    interpolated_static_pressures = static_pressure_interp(probe_positions_total)
+
+    # Compute velocity using Bernoulli's equation
+    velocities = np.sqrt(2 * (total_pressures - interpolated_static_pressures) / rho)
+    V_inf = mu * Re / (rho * c)  # Free-stream velocity
+    velocity_deficit = V_inf - velocities
+
+    # Plot velocity profile
+    plt.figure(figsize=(10, 6))
+    plt.plot(probe_positions_total, velocities, label='Velocity (m/s)', marker='o', color='blue')
+    plt.axhline(V_inf, color='green', linestyle='--', label='Free-stream Velocity')
+    plt.xlabel('Transverse Axis (y)')
+    plt.ylabel('Velocity (m/s)')
+    plt.title(f'Velocity Profile at AOA = {AOA}°')
+    plt.legend()
+    plt.grid(True)
     plt.show()
+
+    # Optionally return computed data for further analysis
+    return velocities, velocity_deficit
 
 getVelocityProfile(1.0)
 

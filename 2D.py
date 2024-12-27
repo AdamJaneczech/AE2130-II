@@ -93,14 +93,15 @@ def getCp(AOA):
 
     # Plot Cp
     plt.figure(figsize=(10, 6))
-    plt.plot(probe_positions_u, C_pu, label='C_p (upper)', marker='o', color='blue')
-    plt.plot(probe_positions_l, C_pl, label='C_p (lower)', marker='o', color='red')
+    plt.plot(probe_positions_u, C_pu, label='C_p (upper)', marker='o', color='#3DA5D9')
+    plt.plot(probe_positions_l, C_pl, label='C_p (lower)', marker='o', color='#D7263D')
     plt.xlabel('x/c')
     plt.ylabel('C_p')
     plt.gca().invert_yaxis()
     plt.title(f'Pressure Coefficient at AOA = {AOA}°')
     plt.legend()
     plt.grid(True)
+    plt.tight_layout()
     plt.show()
 
     return C_pu, C_pl
@@ -163,19 +164,17 @@ def getVelocityProfile(AOA):
 
     # Plot velocity profile
     plt.figure(figsize=(10, 6))
-    plt.plot(restricted_positions, velocities, label='Velocity (m/s)', marker='o', color='blue')
-    plt.axhline(V_inf, color='green', linestyle='--', label='Free-stream Velocity')
+    plt.plot(restricted_positions, velocities, label='Velocity (m/s)', marker='o', color='#3DA5D9')
+    plt.axhline(V_inf, color='#50514F', linestyle='--', label='Free-stream Velocity')
     plt.xlabel('Transverse Axis (y)')
     plt.ylabel('Velocity (m/s)')
     plt.title(f'Velocity Profile at AOA = {AOA}° (Within Static Probe Range)')
     plt.legend()
     plt.grid(True)
+    plt.tight_layout()
     plt.show()
 
     return velocities, velocity_deficit
-
-getCp(1.0)
-getVelocityProfile(1.0)
-
-# Define the AOAs to process
-aoas = [-3.0, -1.0, 0.0, 1.0, 3.0, 5.0, 10.0, 11.0, 12.0]  # Example with more AOAs
+aoa = 7
+getCp(aoa)
+getVelocityProfile(aoa)

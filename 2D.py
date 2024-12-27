@@ -3,6 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from matplotlib import pyplot as plt
+from scipy.interpolate import interp1d
 # File path
 file_path = 'raw_2D_code.txt'
 
@@ -63,7 +64,7 @@ data_array = np.array(data, dtype=object)
 # Create a dictionary of NumPy arrays for each column
 columns = {header: data_array[:, idx] for idx, header in enumerate(headers)}
 # Access confirmation
-print("Columns available:", list(columns.keys()))
+#print("Columns available:", list(columns.keys()))
 
 #get the normal force coefficient
 def getCp(AOA):
@@ -72,26 +73,35 @@ def getCp(AOA):
         print("Column 'Alpha' not found in the data.")
         return None
     
-    # Convert AOA column to numeric values
     aoa_column = np.array(columns['Alpha'], dtype=float)
-    rho = 0
-    # Find the row corresponding to the specified AOA
-    for row_index in range(31):  # Only search within rows 0 to 31
-        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):  # Compare with tolerance for floats
-            # Extract probe data for the given AOA
+    for row_index in range(31):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
             probe_data = np.array([
                 float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(1, 50)
-            ])  # Adjust range based on probe columns
-            #print(f"Probe data for AOA = {AOA}:\n{probe_data}")
-            rho = float(columns[f'rho'][row_index])
+            ])
+            rho = float(columns['rho'][row_index])
             probe_data_u = probe_data[:25]
             probe_data_l = probe_data[25:]
-    
-    V_inf = mu * Re / (rho * c)
-            
-    C_pl = probe_data_l * (1/(0.5 * rho * V_inf**2))
-    C_pu = probe_data_u * (1/(0.5 * rho * V_inf**2))
+            break
+    else:
+        print(f"No data found for AOA = {AOA} degrees.")
+        return None
 
+    V_inf = mu * Re / (rho * c)
+    C_pu = probe_data_u / (0.5 * rho * V_inf**2)
+    C_pl = probe_data_l / (0.5 * rho * V_inf**2)
+
+    # Plot Cp
+    plt.figure(figsize=(10, 6))
+    plt.plot(probe_positions_u, C_pu, label='C_p (upper)', marker='o', color='blue')
+    plt.plot(probe_positions_l, C_pl, label='C_p (lower)', marker='o', color='red')
+    plt.xlabel('x/c')
+    plt.ylabel('C_p')
+    plt.gca().invert_yaxis()
+    plt.title(f'Pressure Coefficient at AOA = {AOA}°')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
     return C_pu, C_pl
 
@@ -108,12 +118,10 @@ def getForceCoeffs(AOA, C_pl, C_pu):
 
     # get the cl and cd using aoa & trig
 
-from scipy.interpolate import interp1d
-
 def getVelocityProfile(AOA):
     """
     Computes the velocity profile at a given angle of attack (AOA), interpolating
-    static pressures to match total pressure probe locations.
+    static pressures only within the boundaries of the static pressure probes.
 
     Parameters:
         AOA (float): Angle of attack in degrees.
@@ -123,76 +131,51 @@ def getVelocityProfile(AOA):
         return None
 
     aoa_column = np.array(columns['Alpha'], dtype=float)
-    # Find the row corresponding to the specified AOA
-    for row_index in range(31):  # Only search within rows 0 to 31
-        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):  # Compare with tolerance for floats
-            # Extract probe data for the given AOA
+    for row_index in range(31):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
             total_pressures = np.array([
                 float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(50, 97)
-            ])  # Adjust range based on total pressure probe columns
+            ])
             static_pressures = np.array([
                 float(columns[f'P{str(i).zfill(3)}'][row_index]) for i in range(98, 110)
-            ])  # Adjust range based on static pressure probe columns
-            rho = float(columns['rho'][row_index])  # Air density
+            ])
+            rho = float(columns['rho'][row_index])
             break
     else:
         print(f"No data found for AOA = {AOA} degrees.")
         return None
 
-    # Interpolate static pressures to match total pressure probe positions
+    # Interpolate static pressures strictly within static probe boundaries
     static_pressure_interp = interp1d(
-        probe_positions_static,
-        static_pressures,
-        kind='linear',
-        bounds_error=False,
-        fill_value="extrapolate"
+        probe_positions_static, static_pressures, kind='linear',
+        bounds_error=False, fill_value="extrapolate"
     )
-    interpolated_static_pressures = static_pressure_interp(probe_positions_total)
 
-    # Compute velocity using Bernoulli's equation
-    velocities = np.sqrt(2 * (total_pressures - interpolated_static_pressures) / rho)
-    V_inf = mu * Re / (rho * c)  # Free-stream velocity
+    valid_indices = (probe_positions_total >= probe_positions_static[0]) & (probe_positions_total <= probe_positions_static[-1])
+    restricted_total_pressures = total_pressures[valid_indices]
+    restricted_positions = probe_positions_total[valid_indices]
+    restricted_interpolated_static_pressures = static_pressure_interp(restricted_positions)
+
+    # Compute velocity using the restricted range
+    velocities = np.sqrt(2 * (restricted_total_pressures - restricted_interpolated_static_pressures) / rho)
+    V_inf = mu * Re / (rho * c)
     velocity_deficit = V_inf - velocities
 
     # Plot velocity profile
     plt.figure(figsize=(10, 6))
-    plt.plot(probe_positions_total, velocities, label='Velocity (m/s)', marker='o', color='blue')
+    plt.plot(restricted_positions, velocities, label='Velocity (m/s)', marker='o', color='blue')
     plt.axhline(V_inf, color='green', linestyle='--', label='Free-stream Velocity')
     plt.xlabel('Transverse Axis (y)')
     plt.ylabel('Velocity (m/s)')
-    plt.title(f'Velocity Profile at AOA = {AOA}°')
+    plt.title(f'Velocity Profile at AOA = {AOA}° (Within Static Probe Range)')
     plt.legend()
     plt.grid(True)
     plt.show()
 
-    # Optionally return computed data for further analysis
     return velocities, velocity_deficit
 
+getCp(1.0)
 getVelocityProfile(1.0)
 
 # Define the AOAs to process
 aoas = [-3.0, -1.0, 0.0, 1.0, 3.0, 5.0, 10.0, 11.0, 12.0]  # Example with more AOAs
-
-# Initialize arrays to store results
-results = [getCp(aoa) for aoa in aoas]
-
-# Calculate the grid size for subplots (3 columns per row)
-columns = 3
-rows = math.ceil(len(aoas) / columns)  # Number of rows needed
-
-# Create subplots dynamically
-plt.figure(figsize=(columns * 5, rows * 4))  # Adjust figure size based on rows and columns
-
-for i, (aoa, (C_pu, C_pl)) in enumerate(zip(aoas, results), start=1):
-    plt.subplot(rows, columns, i)  # Create subplot with dynamic rows and columns
-    plt.plot(probe_positions_u, C_pu, label='C_p upper part', marker='o', color='#187795')
-    plt.plot(probe_positions_l, C_pl, label='C_p lower part', marker='o', color='#F76F8E')
-    plt.xlabel('x/c')
-    plt.ylabel(f'C_p with AOA = {aoa} deg')
-    plt.gca().invert_yaxis()
-    if i == 1:  # Add legend to the first subplot only
-        plt.legend()
-    getForceCoeffs(aoa, C_pl, C_pu)
-
-plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to avoid overlap with title
-plt.show()

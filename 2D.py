@@ -117,7 +117,7 @@ def getCn(AOA):
     integral_lower = np.trapz(C_pl, probe_positions_l)
     #compute the normal force coefficient
     C_n = (integral_lower - integral_upper)
-    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}, AOA: {AOA}')
+    #print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}, AOA: {AOA}')
 
     return C_n
 
@@ -131,7 +131,7 @@ def getCm(AOA):
     integral_lower = np.trapz(C_pl * probe_positions_l, probe_positions_l)
     #compute C_m
     C_m = integral_lower - integral_upper
-    print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_m: {C_m}, AOA: {AOA}')
+    #print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_m: {C_m}, AOA: {AOA}')
 
     return C_m
 
@@ -231,74 +231,134 @@ def getCt(AOA):
     delta_x_upper = np.diff(probe_positions_u)
     delta_x_lower = np.diff(probe_positions_l)
 
-    Ct_upper = np.sum(C_pu[:-1] * np.cos(interp_theta_upper[:-1]) * delta_x_upper)
-    Ct_lower = np.sum(C_pl[:-1] * np.cos(interp_theta_lower[:-1]) * delta_x_lower)
+    # Ensure correct signs for tangential projections
+    Ct_upper = np.sum(C_pu[:-1] * np.abs(np.cos(interp_theta_upper[:-1])) * delta_x_upper)
+    Ct_lower = np.sum(C_pl[:-1] * np.abs(np.cos(interp_theta_lower[:-1])) * delta_x_lower)
 
     # Total tangential force coefficient
     C_t = Ct_upper + Ct_lower
 
-    print(f"Tangential Force Coefficient (C_t): {C_t:.4f}, AOA: {AOA}")
+    #print(f"Tangential Force Coefficient (C_t): {C_t:.4f}, AOA: {AOA}")
     return C_t
 
-# Initialize arrays to store AOA, C_n, and C_m values
-aoa_range = range(-15, 15)  # Define AOA range
-cn_values = []
-cm_values = []
-ct_values = []
-valid_aoa = []
+def getClPres(AOA):
+    """
+    Compute the lift coefficient (C_l) from C_n, C_t, and AOA.
+    """
+    C_n = getCn(AOA)
+    C_t = getCt(AOA)
+    if C_n is None or C_t is None:
+        return None
+    alpha_rad = np.radians(AOA)  # Convert AOA to radians
+    C_l = C_n * np.cos(alpha_rad) - C_t * np.sin(alpha_rad)
+    #print(f"Lift Coefficient (C_l): {C_l:.4f}, AOA: {AOA}")
+    return C_l
 
-for aoa in aoa_range:
-    # Calculate C_n and C_m only if data is available
-    try:
-        # Get C_n and C_m using respective functions
-        C_n = getCn(aoa)
-        C_m = getCm(aoa)
-        C_t = getCt(aoa)
-        cn_values.append(C_n)
-        cm_values.append(C_m)
-        ct_values.append(C_t)
+def getCdPres(AOA):
+    """
+    Compute the drag coefficient (C_d) from C_n, C_t, and AOA.
+    """
+    C_n = getCn(AOA)
+    C_t = getCt(AOA)
+    if C_n is None or C_t is None:
+        return None
+    alpha_rad = np.radians(AOA)  # Convert AOA to radians
+    C_d = C_t * np.cos(alpha_rad) + C_n * np.sin(alpha_rad)
+    #print(f"Drag Coefficient (C_d): {C_d:.4f}, AOA: {AOA}")
+    return C_d
 
-        # Store valid AOA
-        valid_aoa.append(aoa)
-    except:
-        # Skip angles of attack without data
-        continue
+def getCdWake(AOA):
+    """
+    Compute the drag coefficient (C_d) by integrating the velocity profile in the wake region.
+    
+    Parameters:
+        AOA (float): Angle of attack in degrees.
+    """
+    # Get velocity profile and velocity deficit
+    velocities, velocity_deficit = getVelocityProfile(AOA)
+    
+    # Ensure data exists
+    if velocities is None or velocity_deficit is None:
+        print(f"No velocity profile data available for AOA = {AOA}")
+        return None
 
-# Filter out None values from cn_values and cm_values along with their corresponding valid_aoa
-filtered_cn_values = [cn for cn in cn_values if cn is not None]
-filtered_cm_values = [cm for cm in cm_values if cm is not None]
-filtered_ct_values = [ct for ct in ct_values if ct is not None]
-filtered_valid_aoa = [aoa for idx, aoa in enumerate(valid_aoa) if cn_values[idx] is not None]
+    # Retrieve free-stream velocity and density
+    rho = 1.16  # Air density (kg/m^3) as an example
+    V_inf = 17.0  # Free-stream velocity (m/s), replace with actual calculation if needed
 
-# Plot C_n vs AOA
-plt.figure(figsize=(10, 6))
-plt.plot(filtered_valid_aoa, filtered_cn_values, label="C_n", marker="o", color='#3DA5D9')
-plt.xlabel("Angle of Attack (°)")
-plt.ylabel("C_n")
-plt.title("Normal Force Coefficient (C_n) vs Angle of Attack")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+    # Limit the range of integration to the static probe range
+    # This assumes static probe positions are already defined in the code
+    start_index = 10  # Starting index of the static probe range
+    end_index = 35    # Ending index of the static probe range
+    limited_velocities = velocities[start_index:end_index]
+    limited_velocity_deficit = velocity_deficit[start_index:end_index]
+    limited_positions = probe_positions_total[start_index:end_index]
 
-# Plot C_m vs AOA
-plt.figure(figsize=(10, 6))
-plt.plot(filtered_valid_aoa, filtered_cm_values, label="C_m", marker="o", color='#3DA5D9')
-plt.xlabel("Angle of Attack (°)")
-plt.ylabel("C_m")
-plt.title("Moment Coefficient (C_m) vs Angle of Attack")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+    # Compute delta_y within the limited range
+    delta_y = np.diff(limited_positions)
 
-# Plot C_t vs AOA
-plt.figure(figsize=(10, 6))
-plt.plot(filtered_valid_aoa, filtered_ct_values, label="C_t", marker="o", color='#3DA5D9')
-plt.xlabel("Angle of Attack (°)")
-plt.ylabel("C_t")
-plt.title("Tangential Force Coefficient (C_t) vs Angle of Attack")
-plt.grid(True)
-plt.legend()
-plt.tight_layout()
-plt.show()
+    # Ensure delta_y matches the size of limited_velocities[:-1] and limited_velocity_deficit[:-1]
+    if len(limited_velocities) - 1 != len(delta_y):
+        print("Mismatch in dimensions of delta_y and velocities; adjusting...")
+        delta_y = delta_y[:len(limited_velocities) - 1]
+
+    # Integrate over the wake region
+    wake_drag_integral = np.sum(rho * limited_velocities[:-1] * limited_velocity_deficit[:-1] * delta_y)
+    
+    # Normalize drag force to compute drag coefficient
+    drag_force = wake_drag_integral
+    C_d = drag_force / (0.5 * rho * V_inf**2 * c)
+
+    print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
+    return C_d
+
+getCdWake(1.0)
+    
+def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title):
+    """
+    Universal plotting function to calculate and plot coefficients against angle of attack.
+    
+    Parameters:
+        aoa_range (range): Range of angle of attack (AOA) values.
+        coeff_function (function): Function to calculate the coefficient (e.g., getCn, getCm, etc.).
+        coeff_label (str): Label for the coefficient (e.g., "C_n").
+        y_label (str): Y-axis label (e.g., "C_n").
+        title (str): Title of the plot.
+    """
+    # Initialize arrays to store AOA and coefficient values
+    aoa_values = []
+    coeff_values = []
+
+    # Calculate coefficients for the given range of AOAs
+    for aoa in aoa_range:
+        coeff = coeff_function(aoa)
+        if coeff is not None:
+            aoa_values.append(aoa)
+            coeff_values.append(coeff)
+
+    # Plot the coefficient vs AOA
+    plt.figure(figsize=(10, 6))
+    plt.plot(aoa_values, coeff_values, label=coeff_label, marker="o", color='#3DA5D9')
+    plt.xlabel("Angle of Attack (°)")
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+# Define AOA range
+aoa_range = range(-15, 16)  # AOAs from -15 to 15 degrees
+
+# Plot C_n
+plotVsAOA(aoa_range, getCn, "C_n", "C_n", "Normal Force Coefficient (C_n) vs Angle of Attack")
+
+# Plot C_m
+plotVsAOA(aoa_range, getCm, "C_m", "C_m", "Moment Coefficient (C_m) vs Angle of Attack")
+
+# Plot C_t
+plotVsAOA(aoa_range, getCt, "C_t", "C_t", "Tangential Force Coefficient (C_t) vs Angle of Attack")
+
+# If C_l and C_d are defined:
+plotVsAOA(aoa_range, getClPres, "C_l", "C_l", "Lift Coefficient (C_l) vs Angle of Attack")
+plotVsAOA(aoa_range, getCdPres, "C_d", "C_d", "Drag Coefficient (C_d) vs Angle of Attack")

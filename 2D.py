@@ -191,7 +191,7 @@ def getVelocityProfile(AOA, plot = False):
         plt.tight_layout()
         plt.show()
 
-    return velocities, velocity_deficit
+    return velocities, velocity_deficit, restricted_positions
 
 def getCt(AOA):
     """
@@ -232,8 +232,8 @@ def getCt(AOA):
     delta_x_lower = np.diff(probe_positions_l)
 
     # Ensure correct signs for tangential projections
-    Ct_upper = np.sum(C_pu[:-1] * np.abs(np.cos(interp_theta_upper[:-1])) * delta_x_upper)
-    Ct_lower = np.sum(C_pl[:-1] * np.abs(np.cos(interp_theta_lower[:-1])) * delta_x_lower)
+    Ct_upper = np.sum(C_pu[:-1] * np.cos(interp_theta_upper[:-1]) * delta_x_upper)
+    Ct_lower = np.sum(C_pl[:-1] * np.cos(interp_theta_lower[:-1]) * delta_x_lower)
 
     # Total tangential force coefficient
     C_t = Ct_upper + Ct_lower
@@ -274,36 +274,24 @@ def getCdWake(AOA):
     Parameters:
         AOA (float): Angle of attack in degrees.
     """
-    # Get velocity profile and velocity deficit
-    velocities, velocity_deficit = getVelocityProfile(AOA)
-    
     # Ensure data exists
-    if velocities is None or velocity_deficit is None:
+    if getVelocityProfile(AOA) is None:
         print(f"No velocity profile data available for AOA = {AOA}")
         return None
+    else:
+        # Get velocity profile and velocity deficit
+        velocities, velocity_deficit, positions = getVelocityProfile(AOA)
+    
 
     # Retrieve free-stream velocity and density
     rho = 1.16  # Air density (kg/m^3) as an example
     V_inf = 17.0  # Free-stream velocity (m/s), replace with actual calculation if needed
 
-    # Limit the range of integration to the static probe range
-    # This assumes static probe positions are already defined in the code
-    start_index = 10  # Starting index of the static probe range
-    end_index = 35    # Ending index of the static probe range
-    limited_velocities = velocities[start_index:end_index]
-    limited_velocity_deficit = velocity_deficit[start_index:end_index]
-    limited_positions = probe_positions_total[start_index:end_index]
 
     # Compute delta_y within the limited range
-    delta_y = np.diff(limited_positions)
-
-    # Ensure delta_y matches the size of limited_velocities[:-1] and limited_velocity_deficit[:-1]
-    if len(limited_velocities) - 1 != len(delta_y):
-        print("Mismatch in dimensions of delta_y and velocities; adjusting...")
-        delta_y = delta_y[:len(limited_velocities) - 1]
-
+    delta_y = np.diff(positions) / 1000 #convert to meters from mm
     # Integrate over the wake region
-    wake_drag_integral = np.sum(rho * limited_velocities[:-1] * limited_velocity_deficit[:-1] * delta_y)
+    wake_drag_integral = np.sum(rho * velocities[:-1] * velocity_deficit[:-1] * delta_y)
     
     # Normalize drag force to compute drag coefficient
     drag_force = wake_drag_integral
@@ -312,8 +300,6 @@ def getCdWake(AOA):
     print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
     return C_d
 
-getCdWake(1.0)
-    
 def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title):
     """
     Universal plotting function to calculate and plot coefficients against angle of attack.
@@ -362,3 +348,5 @@ plotVsAOA(aoa_range, getCt, "C_t", "C_t", "Tangential Force Coefficient (C_t) vs
 # If C_l and C_d are defined:
 plotVsAOA(aoa_range, getClPres, "C_l", "C_l", "Lift Coefficient (C_l) vs Angle of Attack")
 plotVsAOA(aoa_range, getCdPres, "C_d", "C_d", "Drag Coefficient (C_d) vs Angle of Attack")
+
+plotVsAOA(aoa_range, getCdWake, "C_d", "C_d", "C_d wake")

@@ -122,17 +122,22 @@ def getCn(AOA):
     return C_n
 
 def getCm(AOA):
-    if(getCp(AOA) == None):
+    """
+    Compute the pitching moment coefficient (C_m) for a given angle of attack (AOA).
+    """
+    if getCp(AOA) is None:
         return None
     else:
         C_pu, C_pl = getCp(AOA)
-    #integrate pressure coefficients multiplied by the chord-wise distance on both sides of the airfoil
+
+    # Integrate pressure coefficients
     integral_upper = np.trapz(C_pu * probe_positions_u, probe_positions_u)
     integral_lower = np.trapz(C_pl * probe_positions_l, probe_positions_l)
-    #compute C_m
-    C_m = integral_lower - integral_upper
-    #print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_m: {C_m}, AOA: {AOA}')
 
+    # Compute pitching moment coefficient
+    C_m = integral_lower - integral_upper
+
+    #print(f"Pitching Moment Coefficient (C_m): {C_m:.4f}, AOA: {AOA}")
     return C_m
 
 def getVelocityProfile(AOA, plot = False):
@@ -227,18 +232,15 @@ def getCt(AOA):
     interp_theta_upper = np.interp(probe_positions_u, x_upper, theta_upper)
     interp_theta_lower = np.interp(probe_positions_l, x_lower, theta_lower)
 
-    # Compute tangential force coefficient contributions
-    delta_x_upper = np.diff(probe_positions_u)
-    delta_x_lower = np.diff(probe_positions_l)
+    print(interp_theta_upper)
 
-    # Ensure correct signs for tangential projections
-    Ct_upper = np.sum(C_pu[:-1] * np.cos(interp_theta_upper[:-1]) * delta_x_upper)
-    Ct_lower = np.sum(C_pl[:-1] * np.cos(interp_theta_lower[:-1]) * delta_x_lower)
+    # Calculate tangential force coefficient using trapezoidal integration
+    Ct_upper = np.trapz(C_pu * np.cos(interp_theta_upper), probe_positions_u)
+    Ct_lower = np.trapz(C_pl * np.cos(interp_theta_lower), probe_positions_l)
 
     # Total tangential force coefficient
-    C_t = Ct_upper + Ct_lower
+    C_t = - (Ct_upper + Ct_lower)
 
-    #print(f"Tangential Force Coefficient (C_t): {C_t:.4f}, AOA: {AOA}")
     return C_t
 
 def getClPres(AOA):
@@ -297,7 +299,7 @@ def getCdWake(AOA):
     drag_force = wake_drag_integral
     C_d = drag_force / (0.5 * rho * V_inf**2 * c)
 
-    print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
+    #print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
     return C_d
 
 def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title):

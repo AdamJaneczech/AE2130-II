@@ -94,18 +94,26 @@ def getCp(AOA, plot = False):
     # Plot Cp
     if(plot):
         plt.figure(figsize=(10, 6))
-        plt.plot(probe_positions_u, C_pu, label='C_p (upper)', marker='o', color='#3DA5D9')
-        plt.plot(probe_positions_l, C_pl, label='C_p (lower)', marker='o', color='#D7263D')
-        plt.xlabel('x/c')
-        plt.ylabel('C_p')
+        plt.plot(probe_positions_u, C_pu, label=r"$C_{p_u}$" + ' (upper)', marker='o', color='#3DA5D9')
+        plt.plot(probe_positions_l, C_pl, label=r"$C_{p_l}$" + ' (lower)', marker='o', color='#D7263D')
+        plt.tick_params(axis='both', labelsize=12)
+        plt.xlabel('x/c', fontsize = 12)
+        plt.ylabel(r"$C_p$", fontsize = 14)
         plt.gca().invert_yaxis()
-        plt.title(f'Pressure Coefficient at AOA = {AOA}°')
-        plt.legend()
+        plt.title(r"$C_p$" + " at " + r"$\alpha$" + f' = {AOA}°')
+        plt.legend(fontsize = 12)
         plt.grid(True)
         plt.tight_layout()
         plt.show()
 
     return C_pu, C_pl
+
+getCp(-6.0, True)
+getCp(-3.0, True)
+getCp(-1.0, True)
+getCp(1.0, True)
+getCp(3.0, True)
+getCp(6.0, True)
 
 def getCn(AOA):
     if(getCp(AOA) == None):
@@ -135,7 +143,7 @@ def getCm(AOA):
     integral_lower = np.trapz(C_pl * probe_positions_l, probe_positions_l)
 
     # Compute pitching moment coefficient
-    C_m = integral_lower - integral_upper
+    C_m = -integral_upper + integral_lower
 
     #print(f"Pitching Moment Coefficient (C_m): {C_m:.4f}, AOA: {AOA}")
     return C_m
@@ -186,17 +194,25 @@ def getVelocityProfile(AOA, plot = False):
     # Plot velocity profile
     if(plot):
         plt.figure(figsize=(10, 6))
-        plt.plot(restricted_positions, velocities, label='Velocity (m/s)', marker='o', color='#3DA5D9')
-        plt.axhline(V_inf, color='#50514F', linestyle='--', label='Free-stream Velocity')
-        plt.xlabel('Transverse Axis (y)')
-        plt.ylabel('Velocity (m/s)')
-        plt.title(f'Velocity Profile at AOA = {AOA}° (Within Static Probe Range)')
-        plt.legend()
+        plt.plot(restricted_positions, velocities, label='u', marker='o', color='#3DA5D9')
+        plt.axhline(V_inf, color='#50514F', linestyle='--', label=r"$u_\infty$")
+        plt.xlabel('y (transverse axis)', fontsize = 12)
+        plt.ylabel('u (m/s)', fontsize = 12)
+        plt.title("Velocity Profile at " + r"$\alpha$" + f' = {AOA}° (Within Static Probe Range)')
+        plt.legend(fontsize = 12)
+        plt.tick_params(axis='both', labelsize=12)
         plt.grid(True)
         plt.tight_layout()
         plt.show()
 
     return velocities, velocity_deficit, restricted_positions
+
+getVelocityProfile(-6.0, True)
+getVelocityProfile(-3.0, True)
+getVelocityProfile(-1.0, True)
+getVelocityProfile(1.0, True)
+getVelocityProfile(3.0, True)
+getVelocityProfile(6.0, True)
 
 def getCt(AOA):
     """
@@ -226,20 +242,20 @@ def getCt(AOA):
 
     # Compute local angles (theta) for upper and lower surfaces
     theta_upper = np.arctan(dy_dx_upper)
-    theta_lower = np.arctan(dy_dx_lower)
+    theta_lower = - np.arctan(dy_dx_lower) # make sure that there is a correct drag contribution direction on the lower side
 
     # Interpolate theta arrays to match probe positions
     interp_theta_upper = np.interp(probe_positions_u, x_upper, theta_upper)
     interp_theta_lower = np.interp(probe_positions_l, x_lower, theta_lower)
 
-    print(interp_theta_upper)
+    print(interp_theta_lower)
 
     # Calculate tangential force coefficient using trapezoidal integration
-    Ct_upper = np.trapz(C_pu * np.cos(interp_theta_upper), probe_positions_u)
-    Ct_lower = np.trapz(C_pl * np.cos(interp_theta_lower), probe_positions_l)
+    Ct_upper = np.trapz(C_pu * np.cos(np.pi/4 - interp_theta_upper), probe_positions_u)
+    Ct_lower = np.trapz(C_pl * np.cos(np.pi/4 - interp_theta_lower), probe_positions_l)
 
     # Total tangential force coefficient
-    C_t = - (Ct_upper + Ct_lower)
+    C_t =  -(Ct_upper + Ct_lower)
 
     return C_t
 
@@ -302,7 +318,7 @@ def getCdWake(AOA):
     #print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
     return C_d
 
-def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title):
+def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title, colorHex = '#3DA5D9'):
     """
     Universal plotting function to calculate and plot coefficients against angle of attack.
     
@@ -326,12 +342,13 @@ def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title):
 
     # Plot the coefficient vs AOA
     plt.figure(figsize=(10, 6))
-    plt.plot(aoa_values, coeff_values, label=coeff_label, marker="o", color='#3DA5D9')
-    plt.xlabel("Angle of Attack (°)")
-    plt.ylabel(y_label)
+    plt.plot(aoa_values, coeff_values, label=coeff_label, marker="o", color=colorHex)
+    plt.tick_params(axis='both', labelsize=12)
+    plt.xlabel(r"$\alpha$" + " (°)", fontsize = 14)
+    plt.ylabel(y_label, fontsize = 14)
     plt.title(title)
     plt.grid(True)
-    plt.legend()
+    plt.legend(fontsize = 12)
     plt.tight_layout()
     plt.show()
 
@@ -339,16 +356,16 @@ def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title):
 aoa_range = range(-15, 16)  # AOAs from -15 to 15 degrees
 
 # Plot C_n
-plotVsAOA(aoa_range, getCn, "C_n", "C_n", "Normal Force Coefficient (C_n) vs Angle of Attack")
+plotVsAOA(aoa_range, getCn, r"$C_n$", r"$C_n$", "Normal Force Coefficient " + r"$C_n$" + " vs " + r"$\alpha$" + " (°)", '#000000')
 
 # Plot C_m
-plotVsAOA(aoa_range, getCm, "C_m", "C_m", "Moment Coefficient (C_m) vs Angle of Attack")
+plotVsAOA(aoa_range, getCm, r"$C_m$", r"$C_m$", "Moment Coefficient " + r"$C_m$" + " vs " + r"$\alpha$" + " (°)", '#6D326D')
 
 # Plot C_t
-plotVsAOA(aoa_range, getCt, "C_t", "C_t", "Tangential Force Coefficient (C_t) vs Angle of Attack")
+plotVsAOA(aoa_range, getCt, r"$C_t$", r"$C_t$", "Tangential Force Coefficient " + r"$C_t$" + " vs " + r"$\alpha$" + " (°)", '#5B8C5A')
 
 # If C_l and C_d are defined:
-plotVsAOA(aoa_range, getClPres, "C_l", "C_l", "Lift Coefficient (C_l) vs Angle of Attack")
-plotVsAOA(aoa_range, getCdPres, "C_d", "C_d", "Drag Coefficient (C_d) vs Angle of Attack")
+plotVsAOA(aoa_range, getClPres, r"$C_l$", r"$C_l$", "Lift Coefficient " + r"$C_l$" + " vs " + r"$\alpha$" + " (°)", '#125E8A')
+plotVsAOA(aoa_range, getCdPres, r"$C_d$", r"$C_d$", "Drag Coefficient (from pressure taps) " + r"$C_d$" + " vs " + r"$\alpha$" + " (°)", '#DD1C1A')
 
-plotVsAOA(aoa_range, getCdWake, "C_d", "C_d", "C_d wake")
+plotVsAOA(aoa_range, getCdWake, r"$C_d$", r"$C_d$", "Drag Coefficient (from wake) " + r"$C_d$" + " vs " + r"$\alpha$" + " (°)", '#DD1C1A')

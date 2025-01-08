@@ -318,6 +318,28 @@ def getCdWake(AOA):
     #print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
     return C_d
 
+def getCoP(AOA):
+    """
+    Compute the center of pressure (CoP) for a given angle of attack (AOA).
+
+    Parameters:
+        AOA (float): Angle of attack in degrees.
+
+    Returns:
+        float: Non-dimensional center of pressure position (x/c).
+    """
+    # Get C_n and C_m for the given AOA
+    C_n = getCn(AOA)
+    C_m = getCm(AOA)
+    
+    if C_n is None or C_m is None:
+        print(f"Unable to calculate CoP for AOA = {AOA}. Missing data.")
+        return None
+
+    # Compute the center of pressure (x/c)
+    x_cop = C_m / C_n
+    return x_cop
+
 def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title, colorHex = '#3DA5D9'):
     """
     Universal plotting function to calculate and plot coefficients against angle of attack.
@@ -354,6 +376,10 @@ def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title, colorHex =
 
 # Define AOA range
 aoa_range = range(-15, 16)  # AOAs from -15 to 15 degrees
+
+# Plot CoP
+plotVsAOA(aoa_range, getCoP, r"$x_{\text{CoP}}/c$", r"$x_{\text{CoP}}/c$", 
+          "Center of Pressure Position vs " + r"$\alpha$" + " (°)", '#FF5733')
 
 # Plot C_n
 plotVsAOA(aoa_range, getCn, r"$C_n$", r"$C_n$", "Normal Force Coefficient " + r"$C_n$" + " vs " + r"$\alpha$" + " (°)", '#000000')

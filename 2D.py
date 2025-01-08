@@ -67,7 +67,7 @@ columns = {header: data_array[:, idx] for idx, header in enumerate(headers)}
 #print("Columns available:", list(columns.keys()))
 
 #get the normal force coefficient
-def getCp(AOA, plot = False):
+def getCp(AOA, plot = False, noCoeffs = False):
     # Ensure the AOA column exists
     if 'Alpha' not in columns:
         print("Column 'Alpha' not found in the data.")
@@ -105,8 +105,10 @@ def getCp(AOA, plot = False):
         plt.grid(True)
         plt.tight_layout()
         plt.show()
-
-    return C_pu, C_pl
+    if(noCoeffs):
+        return probe_data_u, probe_data_l
+    else:
+        return C_pu, C_pl
 
 getCp(-6.0, True)
 getCp(-3.0, True)
@@ -128,6 +130,20 @@ def getCn(AOA):
     #print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}, AOA: {AOA}')
 
     return C_n
+# Get the normal force on the airfoil
+def getN(AOA):
+    if(getCp(AOA) == None):
+        return None
+    else:
+        P_u, P_l = getCp(AOA, False, True)
+    #integrate pressure coefficients on both sides of the airfoil
+    integral_upper = np.trapz(P_u, probe_positions_u)
+    integral_lower = np.trapz(P_l, probe_positions_l)
+    #compute the normal force coefficient
+    N = (integral_lower - integral_upper)
+    #print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}, AOA: {AOA}')
+
+    return N
 
 def getCm(AOA):
     """
@@ -147,6 +163,33 @@ def getCm(AOA):
 
     #print(f"Pitching Moment Coefficient (C_m): {C_m:.4f}, AOA: {AOA}")
     return C_m
+# Get the pitching moment
+def getM(AOA):
+    """
+    Compute the pitching moment (M) for a given angle of attack (AOA).
+    """
+    C_m = getCm(AOA)
+    if C_m is None:
+        return None
+    
+    # Retrieve air density (rho) and calculate freestream velocity (V_inf) for the given AOA
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    for row_index in range(len(aoa_column)):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
+            rho = float(columns['rho'][row_index])  # Retrieve rho from data file
+            break
+    else:
+        print(f"No data found for AOA = {AOA}.")
+        return None
+
+    V_inf = mu * Re / (rho * c)  # Freestream velocity
+    q = 0.5 * rho * V_inf**2    # Dynamic pressure
+
+    # Compute pitching moment
+    M = C_m * q * c**2
+
+    #print(f"Pitching Moment (M): {M:.4f} Nm, AOA: {AOA}")
+    return M
 
 def getVelocityProfile(AOA, plot = False):
     """
@@ -291,31 +334,41 @@ def getCdWake(AOA):
     
     Parameters:
         AOA (float): Angle of attack in degrees.
+    
+    Returns:
+        float: Drag coefficient (C_d) or None if data is missing.
     """
-    # Ensure data exists
-    if getVelocityProfile(AOA) is None:
-        print(f"No velocity profile data available for AOA = {AOA}")
-        return None
+    # Ensure the data file contains the required AOA
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    for row_index in range(len(aoa_column)):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
+            rho = float(columns['rho'][row_index])  # Retrieve rho for the AOA
+            break
     else:
-        # Get velocity profile and velocity deficit
-        velocities, velocity_deficit, positions = getVelocityProfile(AOA)
-    
+        print(f"No data found for AOA = {AOA}.")
+        return None
 
-    # Retrieve free-stream velocity and density
-    rho = 1.16  # Air density (kg/m^3) as an example
-    V_inf = 17.0  # Free-stream velocity (m/s), replace with actual calculation if needed
+    # Compute freestream velocity (V_inf)
+    V_inf = mu * Re / (rho * c)
 
+    # Get the velocity profile for the AOA
+    velocity_data = getVelocityProfile(AOA)
+    if velocity_data is None:
+        print(f"No velocity profile data available for AOA = {AOA}.")
+        return None
+    velocities, velocity_deficit, positions = velocity_data
 
-    # Compute delta_y within the limited range
-    delta_y = np.diff(positions) / 1000 #convert to meters from mm
-    # Integrate over the wake region
+    # Compute delta_y for integration (convert positions to meters)
+    delta_y = np.diff(positions) / 1000  # Assuming positions are in millimeters, convert to meters
+
+    # Integrate the wake drag force
     wake_drag_integral = np.sum(rho * velocities[:-1] * velocity_deficit[:-1] * delta_y)
-    
-    # Normalize drag force to compute drag coefficient
+
+    # Normalize the drag force to compute the drag coefficient
     drag_force = wake_drag_integral
     C_d = drag_force / (0.5 * rho * V_inf**2 * c)
 
-    #print(f"Drag Coefficient (C_d) from Wake: {C_d:.4f}, AOA: {AOA}")
+    #print(f"Drag Coefficient (C_d): {C_d:.4f}, AOA: {AOA}")
     return C_d
 
 def getCoP(AOA):
@@ -386,6 +439,9 @@ plotVsAOA(aoa_range, getCn, r"$C_n$", r"$C_n$", "Normal Force Coefficient " + r"
 
 # Plot C_m
 plotVsAOA(aoa_range, getCm, r"$C_m$", r"$C_m$", "Moment Coefficient " + r"$C_m$" + " vs " + r"$\alpha$" + " (°)", '#6D326D')
+
+# Plot M
+plotVsAOA(aoa_range, getM, r"$M$", r"$M$", "Pitching Moment " + r"$M$" + " vs " + r"$\alpha$" + " (°)", '#6D326D')
 
 # Plot C_t
 plotVsAOA(aoa_range, getCt, r"$C_t$", r"$C_t$", "Tangential Force Coefficient " + r"$C_t$" + " vs " + r"$\alpha$" + " (°)", '#5B8C5A')

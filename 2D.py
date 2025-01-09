@@ -1,4 +1,3 @@
-#https://chatgpt.com/share/676e7c21-9ca8-8001-afc3-92def3482e39
 import numpy as np
 import math
 import matplotlib.pyplot as plt

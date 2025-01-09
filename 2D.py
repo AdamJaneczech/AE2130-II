@@ -137,8 +137,8 @@ def getN(AOA):
     else:
         P_u, P_l = getCp(AOA, False, True)
     #integrate pressure coefficients on both sides of the airfoil
-    integral_upper = np.trapz(P_u, probe_positions_u)
-    integral_lower = np.trapz(P_l, probe_positions_l)
+    integral_upper = np.trapz(P_u, probe_positions_u * c)
+    integral_lower = np.trapz(P_l, probe_positions_l * c)
     #compute the normal force coefficient
     N = (integral_lower - integral_upper)
     #print(f'Integral Upper: {integral_upper}, Integral lower: {integral_lower}, C_n: {C_n}, AOA: {AOA}')
@@ -371,6 +371,86 @@ def getCdWake(AOA):
     #print(f"Drag Coefficient (C_d): {C_d:.4f}, AOA: {AOA}")
     return C_d
 
+def getL(AOA):
+    """
+    Compute the lift force (L) for a given angle of attack (AOA).
+    """
+    C_l = getClWake(AOA)
+    if C_l is None:
+        print(f"Unable to calculate lift force for AOA = {AOA}. Missing data.")
+        return None
+
+    # Retrieve air density (rho) and freestream velocity (V_inf) for the given AOA
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    for row_index in range(len(aoa_column)):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
+            rho = float(columns['rho'][row_index])  # Retrieve rho
+            break
+    else:
+        print(f"No data found for AOA = {AOA}.")
+        return None
+
+    V_inf = mu * Re / (rho * c)  # Freestream velocity
+    q = 0.5 * rho * V_inf**2    # Dynamic pressure
+
+    # Compute lift force
+    L = C_l * q * c
+    return L
+
+
+def getDpres(AOA):
+    """
+    Compute the drag force (D) from pressure taps for a given angle of attack (AOA).
+    """
+    C_d = getCdPres(AOA)
+    if C_d is None:
+        print(f"Unable to calculate drag force from pressure taps for AOA = {AOA}. Missing data.")
+        return None
+
+    # Retrieve air density (rho) and freestream velocity (V_inf) for the given AOA
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    for row_index in range(len(aoa_column)):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
+            rho = float(columns['rho'][row_index])  # Retrieve rho
+            break
+    else:
+        print(f"No data found for AOA = {AOA}.")
+        return None
+
+    V_inf = mu * Re / (rho * c)  # Freestream velocity
+    q = 0.5 * rho * V_inf**2    # Dynamic pressure
+
+    # Compute drag force
+    D_pres = C_d * q * c
+    return D_pres
+
+
+def getDwake(AOA):
+    """
+    Compute the drag force (D) from the wake for a given angle of attack (AOA).
+    """
+    C_d = getCdWake(AOA)
+    if C_d is None:
+        print(f"Unable to calculate drag force from wake for AOA = {AOA}. Missing data.")
+        return None
+
+    # Retrieve air density (rho) and freestream velocity (V_inf) for the given AOA
+    aoa_column = np.array(columns['Alpha'], dtype=float)
+    for row_index in range(len(aoa_column)):
+        if np.isclose(aoa_column[row_index], AOA, atol=1e-6):
+            rho = float(columns['rho'][row_index])  # Retrieve rho
+            break
+    else:
+        print(f"No data found for AOA = {AOA}.")
+        return None
+
+    V_inf = mu * Re / (rho * c)  # Freestream velocity
+    q = 0.5 * rho * V_inf**2    # Dynamic pressure
+
+    # Compute drag force
+    D_wake = C_d * q * c
+    return D_wake
+
 def getCoP(AOA):
     """
     Compute the center of pressure (CoP) for a given angle of attack (AOA).
@@ -384,7 +464,7 @@ def getCoP(AOA):
     # Get C_n and C_m for the given AOA
     C_n = getCn(AOA)
     C_m = getCm(AOA)
-    
+
     if C_n is None or C_m is None:
         print(f"Unable to calculate CoP for AOA = {AOA}. Missing data.")
         return None
@@ -392,6 +472,36 @@ def getCoP(AOA):
     # Compute the center of pressure (x/c)
     x_cop = C_m / C_n
     return x_cop
+
+def getClWake(AOA):
+    """
+    Compute the lift coefficient (Cl) using the wake drag coefficient data for a given angle of attack (AOA).
+    
+    Parameters:
+    - AOA (float): Angle of attack in degrees.
+    
+    Returns:
+    - Cl (float): Lift coefficient.
+    """
+    # Retrieve Cn (normal force coefficient) for the given AOA
+    C_n = getCn(AOA)
+    if C_n is None:
+        print(f"Unable to calculate Cl for AOA = {AOA}. Missing normal force coefficient (Cn).")
+        return None
+
+    # Retrieve Cd (drag coefficient) from wake for the given AOA
+    C_d = getCdWake(AOA)
+    if C_d is None:
+        print(f"Unable to calculate Cl for AOA = {AOA}. Missing drag coefficient (Cd).")
+        return None
+
+    # Convert AOA to radians
+    alpha_rad = np.radians(AOA)
+
+    # Compute Cl using the provided equation
+    Cl = C_n * (np.cos(alpha_rad) + (np.sin(alpha_rad)**2 / np.cos(alpha_rad))) - C_d * np.tan(alpha_rad)
+    
+    return Cl
 
 def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title, colorHex = '#3DA5D9'):
     """
@@ -431,8 +541,18 @@ def plotVsAOA(aoa_range, coeff_function, coeff_label, y_label, title, colorHex =
 aoa_range = range(-15, 16)  # AOAs from -15 to 15 degrees
 
 # Plot CoP
-plotVsAOA(aoa_range, getCoP, r"$x_{\text{CoP}}/c$", r"$x_{\text{CoP}}/c$", 
+plotVsAOA(aoa_range, getCoP, r"$x_{\text{cp}}/c$", r"$x_{\text{cp}}/c$", 
           "Center of Pressure Position vs " + r"$\alpha$" + " (°)", '#FF5733')
+
+plotVsAOA(aoa_range, getClWake, r"$C_l$", r"Lift Coefficient ($C_l$)", r"Lift Coefficient ($C_l$) vs Angle of Attack ($\alpha$)", '#125E8A')
+
+plotVsAOA(aoa_range, getL, r"$L$", r"Lift Force (L) [N]", r"Lift Force (L) vs Angle of Attack ($\alpha$)", '#125E8A')
+
+plotVsAOA(aoa_range, getDpres, r"$D_{\text{pres}}$", r"Drag Force from Pressure Taps (D) [N]", 
+          r"Drag Force (D) from Pressure Taps vs Angle of Attack ($\alpha$)", '#DD1C1A')
+
+plotVsAOA(aoa_range, getDwake, r"$D_{\text{wake}}$", r"Drag Force from Wake (D) [N]", 
+          r"Drag Force (D) from Wake vs Angle of Attack ($\alpha$)", '#DD1C1A')
 
 # Plot C_n
 plotVsAOA(aoa_range, getCn, r"$C_n$", r"$C_n$", "Normal Force Coefficient " + r"$C_n$" + " vs " + r"$\alpha$" + " (°)", '#000000')
